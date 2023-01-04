@@ -1,15 +1,16 @@
 import requests
 import os
 import commands as cmd
+import utils as u
 from time import sleep
 from dotenv import load_dotenv
 
 
 class Controller:
     def __init__(self, gist_id):
-        self.gist_id = gist_id
         self.current_bot = None
         self.last_tag = None
+        self.gist_url = os.getenv("GITHUB_API_URL") + "gists/" + gist_id
         self.headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": "Bearer " + os.getenv("GITHUB_API_TOKEN"),
@@ -43,9 +44,7 @@ class Controller:
 
     def send_command(self, message):
         data = {"body": (self.current_bot + " " + message)}
-        res = requests.post(
-            os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id + "/comments", json=data, headers=self.headers
-        )
+        res = requests.post(self.gist_url + "/comments", json=data, headers=self.headers)
         if res.status_code != 201:
             print("Failed to send command")
             print(res.json())
@@ -58,24 +57,22 @@ class Controller:
         while True:
             if self.last_tag is not None:
                 headers.update({"If-None-Match": self.last_tag})
-            res = requests.get(
-                os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id + "/comments/" + command_id, headers=headers
-            )
+            res = requests.get(self.gist_url + "/comments/" + command_id, headers=headers)
             if res.status_code == 304 or not res.json()["body"].startswith("✅ "):
                 sleep(1)
                 continue
             self.last_tag = None
             break
-        res = requests.get(os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id, headers=self.headers)
+        res = requests.get(self.gist_url, headers=self.headers)
         files = res.json()["files"]
         for key in files:
-            if key == self.current_bot + ".txt":
-                print(files[key]["content"])
+            if key == self.current_bot + os.getenv("BOT_FILE_EXTENSION"):
+                print(u.decode_data_from_base64(u.decode_data_from_markdown(files[key]["content"])).decode("utf-8"))
 
     def bot_available(self, bot_name):
-        res = requests.get(os.getenv("GITHUB_API_URL") + "gists/" + self.gist_id, headers=self.headers)
+        res = requests.get(self.gist_url, headers=self.headers)
         if res.status_code == 200:
-            return (bot_name + ".txt") in res.json()["files"]
+            return (bot_name + os.getenv("BOT_FILE_EXTENSION")) in res.json()["files"]
         else:
             return False
 
