@@ -8,17 +8,17 @@ COMMAND_USERS = {
 }
 COMMAND_DIRECTORY = {
     "name": "ls",
-    "description": "List content of a specified directory.",
+    "description": "List content of a specified directory on the bot.",
     "command": "📚",
 }
 COMMAND_ID = {
     "name": "id",
-    "description": "List current user's id on the bot.",
+    "description": "Get current user's id on the bot.",
     "command": "💬",
 }
 COMMAND_COPY = {
     "name": "cp",
-    "description": "Copy a specified file from bot to controller.",
+    "description": "Copy specified file from the bot to the controller.",
     "command": "📦",
 }
 COMMAND_RUN = {
@@ -26,7 +26,7 @@ COMMAND_RUN = {
     "description": "Execute specified binary on the bot.",
     "command": "🤞",
 }
-COMMAND_EXIT = {"name": "exit", "description": "Exit from the application."}
+COMMAND_EXIT = {"name": "exit", "description": "Exit from the controller application."}
 
 COMMANDS_CONTROLLER = [
     COMMAND_HELP,
