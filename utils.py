@@ -1,6 +1,15 @@
 import base64
 
 
+def encode_command_to_markdown(name: str, command: str, arg: str = None) -> str:
+    template = open("controller_request_template.md", "r")
+    template_data = template.read().replace("@NAME", name).replace("@COMMAND", command)
+    if arg is not None:
+        template_data = template_data.replace("@ARG", arg)
+    template.close()
+    return template_data
+
+
 def encode_data_to_markdown(data: str) -> str:
     template = open("bot_response_template.md", "r")
     template_data = template.read().replace("@DATA", data)

