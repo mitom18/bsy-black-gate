@@ -39,6 +39,12 @@ class Controller:
                     continue
                 command_id = self.send_command(cmd.COMMAND_USERS["command"])
                 self.listen_for_answer(command_id)
+            elif command == cmd.COMMAND_ID["name"]:
+                if self.current_bot is None:
+                    print("No bot selected")
+                    continue
+                command_id = self.send_command(cmd.COMMAND_ID["command"])
+                self.listen_for_answer(command_id)
             elif command == cmd.COMMAND_EXIT["name"]:
                 print("Exiting...")
                 break

